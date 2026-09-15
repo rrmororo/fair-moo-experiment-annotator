@@ -1,0 +1,125 @@
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex:   <urn:fair-moo:> .
+@prefix fmsh: <urn:fair-moo:shapes:> .
+
+# =====================================================================
+# Perfil de CURADORIA — validação da FAIRificação retrospetiva.
+#
+# Aplica-se ao grafo gerado por pipeline.generate_prov em modo
+# "curation". A diferença central face ao perfil prospetivo: um campo
+# essencial pode ser satisfeito por um VALOR documentado OU por uma
+# DECLARAÇÃO FORMAL DE INDISPONIBILIDADE (com fonte e justificação).
+# Isto distingue conformidade com o procedimento de curadoria de
+# completude do registo científico original: um objeto pode conformar
+# com este perfil e ainda assim conter limitações explicitamente
+# reportadas. Referência normativa: SHACL, W3C Recommendation (2017).
+# =====================================================================
+
+# ---- Devem existir DUAS atividades distintas: original + curadoria ----
+fmsh:OriginalExperimentShape a sh:NodeShape ;
+    sh:targetNode ex:original-experiment ;
+    sh:class prov:Activity ;
+    sh:property [
+        sh:path prov:wasAssociatedWith ;
+        sh:minCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:message "O experimento original deve associar-se ao(s) criador(es) originais (prov:wasAssociatedWith)." ;
+    ] .
+
+fmsh:CurationActivityShape a sh:NodeShape ;
+    sh:targetNode ex:curation ;
+    sh:class prov:Activity ;
+    sh:property [
+        sh:path prov:startedAtTime ;
+        sh:minCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "A atividade de curadoria deve ser datada (prov:startedAtTime)." ;
+    ] ;
+    sh:property [
+        sh:path prov:wasAssociatedWith ;
+        sh:minCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:message "A curadoria deve associar-se ao curador (prov:wasAssociatedWith)." ;
+    ] ;
+    sh:property [
+        sh:path prov:used ;
+        sh:minCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:message "A curadoria deve declarar prov:used a apontar para o documento-fonte." ;
+    ] .
+
+# ---- O registo de metadados: gerado pela curadoria, com fonte primária ----
+fmsh:MetadataRecordShape a sh:NodeShape ;
+    sh:targetNode ex:metadata-record ;
+    sh:class prov:Entity ;
+    sh:property [
+        sh:path prov:wasGeneratedBy ;
+        sh:minCount 1 ;
+        sh:hasValue ex:curation ;
+        sh:message "O registo de metadados deve ser gerado pela atividade de curadoria." ;
+    ] ;
+    sh:property [
+        sh:path prov:hadPrimarySource ;
+        sh:minCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:message "O registo de metadados deve declarar prov:hadPrimarySource (proveniência DOS metadados)." ;
+    ] .
+
+# ---- Agentes: nome obrigatório ----
+fmsh:CurationPersonShape a sh:NodeShape ;
+    sh:targetClass prov:Person ;
+    sh:property [
+        sh:path foaf:name ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Cada agente (prov:Person) deve ter foaf:name." ;
+    ] .
+
+# ---- Entidade de campo curado: OU evidência OU declaração de ausência ----
+# Alvo: qualquer entidade gerada pela curadoria que rotule um campo.
+# A regra sh:xone impõe exatamente um dos dois padrões:
+#   (a) tem prov:value + ex:evidence (valor documentado), OU
+#   (b) tem ex:absenceJustification (declaração de indisponibilidade).
+fmsh:CuratedFieldShape a sh:NodeShape ;
+    sh:targetSubjectsOf ex:evidence , ex:absenceJustification ;
+    sh:class prov:Entity ;
+    sh:property [
+        sh:path prov:wasGeneratedBy ;
+        sh:minCount 1 ;
+        sh:hasValue ex:curation ;
+        sh:message "Cada campo curado deve ser atribuído à atividade de curadoria." ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:message "Cada campo curado deve identificar o campo a que se refere (rdfs:label)." ;
+    ] ;
+    sh:xone (
+        # (a) valor documentado: precisa de valor E evidência
+        [
+            sh:property [ sh:path prov:value ; sh:minCount 1 ] ;
+            sh:property [ sh:path ex:evidence ; sh:minCount 1 ;
+                          sh:datatype xsd:string ] ;
+        ]
+        # (b) declaração de indisponibilidade: precisa de justificação
+        [
+            sh:property [ sh:path ex:absenceJustification ; sh:minCount 1 ;
+                          sh:datatype xsd:string ] ;
+        ]
+    ) ;
+    sh:message "Cada campo curado deve ter OU (valor + evidência documental) OU uma declaração de indisponibilidade justificada — nunca ambos, nunca nenhum." .
+
+# ---- Âncoras semânticas: mesmo padrão do perfil prospetivo ----
+fmsh:CurationSemanticAnchorShape a sh:NodeShape ;
+    sh:targetSubjectsOf owl:sameAs ;
+    sh:property [
+        sh:path owl:sameAs ;
+        sh:nodeKind sh:IRI ;
+        sh:pattern "^(http://www\\.wikidata\\.org/entity/Q[0-9]+|https://w3id\\.org/fair-moo/[a-z][a-z-]*/[^/]+)$" ;
+        sh:message "owl:sameAs deve resolver para uma entidade Wikidata (wd:Q...) ou para um URI persistente FAIR-MOO (w3id.org/fair-moo/<kind>/<slug>)." ;
+    ] .

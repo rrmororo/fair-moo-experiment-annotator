@@ -1,0 +1,7 @@
+streamlit>=1.36
+pandas>=2.0
+requests>=2.31
+pyshacl>=0.26        # SHACL validation (curation profile)
+# optional:
+# rocrate>=0.10      # RO-Crate packaging via library
+# mlcroissant>=1.0   # additional validation of croissant.json
