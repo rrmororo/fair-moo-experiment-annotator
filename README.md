@@ -1,4 +1,4 @@
-# FAIR MOO Curator — retrospective curation (single mode)
+# FAIR MOO Experiment Annotator — retrospective curation (single mode)
 
 Retrospective FAIRification of an existing MOO experiment: the curator ingests
 the files received from the original author (datasets, experiment and
